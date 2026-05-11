@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm run *)",
+      "Bash(copy \"C:\\\\Users\\\\Usuario1\\\\Desktop\\\\College\\\\Octavo semestre\\\\Proyecto Informatico 2\\\\ProyectoFinal+\\\\blackboxAI-frontend\\\\guiaFrontend\\\\assets\\\\blackbox-logo-trim.png\" \"C:\\\\Users\\\\Usuario1\\\\Desktop\\\\College\\\\Octavo semestre\\\\Proyecto Informatico 2\\\\ProyectoFinal+\\\\blackboxAI-frontend\\\\public\\\\blackbox-logo-trim.png\")"
+    ]
+  }
+}
