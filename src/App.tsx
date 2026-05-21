@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/auth/AuthPage';
@@ -11,15 +12,29 @@ import RunsList from './pages/app/runs/RunsList';
 import RunDetail from './pages/app/runs/RunDetail';
 import Metrics from './pages/app/Metrics';
 import Users from './pages/app/Users';
+import RequireAuth from './components/RequireAuth';
+import { registerTokenGetter, useAuth } from './contexts/AuthContext';
+
+function TokenBridge() {
+  const { getToken } = useAuth();
+  useEffect(() => {
+    registerTokenGetter(getToken);
+  }, [getToken]);
+  return null;
+}
 
 export default function App() {
   return (
     <BrowserRouter>
+      <TokenBridge />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<AuthPage />} />
 
-        <Route path="/app" element={<AppLayout />}>
+        <Route
+          path="/app"
+          element={<RequireAuth><AppLayout /></RequireAuth>}
+        >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard"       element={<Dashboard />} />
           <Route path="agents"          element={<AgentsList />} />

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import type { TestSet } from '../types';
-import type { TestResult } from '../types';
+import { useState, useEffect, useRef } from 'react';
+import type { TestSet, TestResult } from '../types';
 import { Icons } from './Icons';
+import { runsApi } from '../services/api';
+import { ApiError } from '../types';
 
 interface Props {
   testSet: TestSet;
@@ -14,6 +15,23 @@ export function RunInProgress({ testSet, onComplete, onClose }: Props) {
   const passRate = testSet.passRate ?? 0.8;
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<TestResult[]>([]);
+  const [serverNote, setServerNote] = useState<string | null>(null);
+  const created = useRef(false);
+
+  // Intenta arrancar el run en backend (no bloquea la animación si no existe)
+  useEffect(() => {
+    if (created.current) return;
+    created.current = true;
+    runsApi.create({ testSetId: testSet.id })
+      .then(() => setServerNote('run registrado en backend'))
+      .catch(err => {
+        if (err instanceof ApiError && err.status === 404) {
+          setServerNote('endpoint /runs no disponible — simulación local');
+        } else {
+          setServerNote(`backend: ${(err as Error).message}`);
+        }
+      });
+  }, [testSet.id]);
 
   useEffect(() => {
     if (progress >= total) {
@@ -78,6 +96,7 @@ export function RunInProgress({ testSet, onComplete, onClose }: Props) {
             <div>$ run --set {testSet.id} --concurrency 4</div>
             <div>→ inicializando agente {testSet.agentName ?? 'agente'}...</div>
             <div>→ enviando test #{progress} de {total}</div>
+            {serverNote && <div style={{ color: 'var(--ink-4)' }}>→ {serverNote}</div>}
             {progress >= total && <div style={{ color: 'var(--green)' }}>✓ ejecución completada</div>}
           </div>
         </div>

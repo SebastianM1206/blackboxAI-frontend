@@ -1,17 +1,43 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
 import { HeatMap } from '../../components/HeatMap';
+import { useAuth } from '../../contexts/AuthContext';
+import { authApi } from '../../services/api';
+
+type Mode = 'signin' | 'signup';
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('juan@uao.edu.co');
-  const [password, setPassword] = useState('');
+  const location = useLocation() as { state?: { from?: string } };
+  const { signIn, signUp, loading } = useAuth();
 
-  function handleSignIn(e: React.FormEvent) {
+  const [mode, setMode] = useState<Mode>('signin');
+  const [name, setName]         = useState('');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState<string | null>(null);
+
+  const redirectTo = location.state?.from && location.state.from.startsWith('/app')
+    ? location.state.from
+    : '/app/dashboard';
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    localStorage.setItem('authToken', 'demo-token');
-    navigate('/app/dashboard');
+    setError(null);
+
+    try {
+      if (mode === 'signin') {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password, name || undefined);
+        // Sincroniza usuario en backend (no-op si el endpoint no existe)
+        await authApi.syncUser({ name, email }).catch(() => null);
+      }
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      setError((err as Error).message ?? 'No se pudo iniciar sesión');
+    }
   }
 
   return (
@@ -27,19 +53,33 @@ export default function AuthPage() {
         </div>
 
         <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: '0 32px' }}>
-          <form style={{ width: '100%', maxWidth: 360 }} onSubmit={handleSignIn}>
+          <form style={{ width: '100%', maxWidth: 360 }} onSubmit={handleSubmit}>
             <h2 style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>
-              Bienvenido de vuelta
+              {mode === 'signin' ? 'Bienvenido de vuelta' : 'Crear cuenta'}
             </h2>
             <p className="muted" style={{ marginTop: 8, marginBottom: 28, fontSize: 14 }}>
-              Inicia sesión para continuar evaluando tus agentes.
+              {mode === 'signin'
+                ? 'Inicia sesión para continuar evaluando tus agentes.'
+                : 'Regístrate para empezar a evaluar agentes conversacionales.'}
             </p>
 
             <div className="stack" style={{ gap: 12 }}>
-              <button type="button" className="btn" style={{ padding: '10px 14px', justifyContent: 'center', fontWeight: 500 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled
+                title="Próximamente"
+                style={{ padding: '10px 14px', justifyContent: 'center', fontWeight: 500, opacity: 0.55 }}
+              >
                 <Icons.Google size={16} /> Continuar con Google
               </button>
-              <button type="button" className="btn" style={{ padding: '10px 14px', justifyContent: 'center', fontWeight: 500 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled
+                title="Próximamente"
+                style={{ padding: '10px 14px', justifyContent: 'center', fontWeight: 500, opacity: 0.55 }}
+              >
                 <Icons.Github size={16} /> Continuar con GitHub
               </button>
             </div>
@@ -51,6 +91,18 @@ export default function AuthPage() {
             </div>
 
             <div className="stack" style={{ gap: 12 }}>
+              {mode === 'signup' && (
+                <div className="field">
+                  <label>Nombre</label>
+                  <input
+                    className="input"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Tu nombre"
+                    autoComplete="name"
+                  />
+                </div>
+              )}
               <div className="field">
                 <label>Email</label>
                 <input
@@ -59,12 +111,18 @@ export default function AuthPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="tu@empresa.com"
+                  required
+                  autoComplete="email"
                 />
               </div>
               <div className="field">
                 <div className="row">
                   <label>Contraseña</label>
-                  <a href="#" className="muted" style={{ fontSize: 12, marginLeft: 'auto', textDecoration: 'none' }}>¿Olvidaste?</a>
+                  {mode === 'signin' && (
+                    <a href="#" className="muted" style={{ fontSize: 12, marginLeft: 'auto', textDecoration: 'none' }}>
+                      ¿Olvidaste?
+                    </a>
+                  )}
                 </div>
                 <input
                   className="input"
@@ -72,16 +130,58 @@ export default function AuthPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  minLength={6}
+                  required
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                 />
               </div>
-              <button type="submit" className="btn btn-accent" style={{ padding: '9px 14px', justifyContent: 'center', fontWeight: 500 }}>
-                Iniciar sesión <Icons.Arrow size={14} />
+
+              {error && (
+                <div style={{
+                  padding: '8px 10px', borderRadius: 6, fontSize: 12.5,
+                  background: 'rgba(213, 71, 71, 0.08)', color: 'var(--red)',
+                  border: '1px solid rgba(213, 71, 71, 0.25)',
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-accent"
+                disabled={loading}
+                style={{ padding: '9px 14px', justifyContent: 'center', fontWeight: 500 }}
+              >
+                {loading
+                  ? 'Procesando…'
+                  : mode === 'signin' ? <>Iniciar sesión <Icons.Arrow size={14} /></> : <>Crear cuenta <Icons.Arrow size={14} /></>}
               </button>
             </div>
 
             <p className="muted" style={{ fontSize: 12.5, marginTop: 22, textAlign: 'center' }}>
-              ¿Aún no tienes cuenta?{' '}
-              <a href="#" style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: 'none' }}>Solicitar acceso</a>
+              {mode === 'signin' ? (
+                <>
+                  ¿Aún no tienes cuenta?{' '}
+                  <a
+                    href="#"
+                    onClick={e => { e.preventDefault(); setMode('signup'); setError(null); }}
+                    style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: 'none' }}
+                  >
+                    Crear cuenta
+                  </a>
+                </>
+              ) : (
+                <>
+                  ¿Ya tienes cuenta?{' '}
+                  <a
+                    href="#"
+                    onClick={e => { e.preventDefault(); setMode('signin'); setError(null); }}
+                    style={{ color: 'var(--ink)', fontWeight: 500, textDecoration: 'none' }}
+                  >
+                    Iniciar sesión
+                  </a>
+                </>
+              )}
             </p>
           </form>
         </div>

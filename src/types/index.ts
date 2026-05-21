@@ -14,7 +14,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  createdAt: string;
+  uid?: string;            // Firebase UID si el backend lo guarda
+  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -22,12 +23,16 @@ export interface Agent {
   id: string;
   name: string;
   description?: string;
+  endpointUrl: string;     // requerido por el backend
+  apiKey?: string;         // requerido al crear; el backend no lo devuelve por seguridad
   provider: string;
   model: string;
   version: string;
   status: AgentStatus;
   createdAt?: string;
   updatedAt?: string;
+
+  // Campos derivados / opcionales calculados en el front
   testSets?: number;
   lastRun?: string;
   passRate?: number;
@@ -74,8 +79,10 @@ export interface Metric {
 
 export interface Run {
   id: string;
-  testSet: string;
-  agent: string;
+  testSetId?: string;
+  testSet: string;          // nombre del set
+  agentId?: string;
+  agent: string;            // nombre del agente
   agentVersion: string;
   started: string;
   duration: string;
@@ -85,15 +92,35 @@ export interface Run {
   total: number;
   passRate: number;
   triggeredBy: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface PaginatedResponse<T> {
   message: string;
   data: T[];
-  pagination: { total: number; page: number; limit: number; totalPages: number };
+  pagination: PaginationMeta;
 }
 
 export interface ApiResponse<T> {
   message: string;
   data: T;
+}
+
+export class ApiError extends Error {
+  status: number;
+  payload?: unknown;
+  constructor(message: string, status: number, payload?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.payload = payload;
+  }
 }
